@@ -92,7 +92,7 @@ sub start {
         }
         $self->{__dbg_callback}->()
             if $self->{__dbg_callback};
-        $self->select ( undef, undef, undef, $self->{heartbeat} )
+        select ( undef, undef, undef, $self->{heartbeat} )
             if $self->{heartbeat};
         if (my ($exit_pid, $status)
                 = $self->_wait(! $self->{__dbg_callback} && ! $self->{heartbeat} && $action <= 0)) {

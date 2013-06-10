@@ -1,0 +1,6 @@
+/META.*
+/MYMETA.*
+/Makefile.old
+/Makefile
+inc/Module/
+/blib/

@@ -17,7 +17,7 @@ use Class::Accessor::Lite (
 our $VERSION = '0.13';
 
 sub new {
-    my $klass = shift;
+    my $class = shift;
     my $opts = @_ == 1 ? $_[0] : +{ @_ };
     my $self = bless {
         worker_pids          => {},
@@ -32,7 +32,7 @@ sub new {
         generation           => 0,
         %$opts,
         _no_adjust_until     => 0, # becomes undef in wait_all_children
-    }, $klass;
+    }, $class;
     $SIG{$_} = sub {
         $self->signal_received($_[0]);
     } for keys %{$self->trap_signals};
@@ -42,14 +42,14 @@ sub new {
 
 sub start {
     my ($self, $cb) = @_;
-    
+
     $self->manager_pid($$);
     $self->signal_received('');
     $self->{generation}++;
-    
+
     die 'cannot start another process while you are in child process'
         if $self->{in_child};
-    
+
     # main loop
     while (! $self->signal_received) {
         my $action = $self->{_no_adjust_until} <= Time::HiRes::time()
@@ -92,8 +92,10 @@ sub start {
         }
         $self->{__dbg_callback}->()
             if $self->{__dbg_callback};
+        $self->select ( undef, undef, undef, $self->{heartbeat} )
+            if $self->{heartbeat};
         if (my ($exit_pid, $status)
-                = $self->_wait(! $self->{__dbg_callback} && $action <= 0)) {
+                = $self->_wait(! $self->{__dbg_callback} && ! $self->{heartbeat} && $action <= 0)) {
             $self->_on_child_reap($exit_pid, $status);
             if (delete($self->{worker_pids}{$exit_pid}) == $self->{generation}
                 && $status != 0) {
@@ -126,7 +128,7 @@ sub start {
             $self->signal_all_children($sig);
         }
     }
-    
+
     1; # return from parent process
 }
 
@@ -247,7 +249,7 @@ Parallel::Prefork - A simple prefork server framework
 =head1 SYNOPSIS
 
   use Parallel::Prefork;
-  
+
   my $pm = Parallel::Prefork->new({
     max_workers  => 10,
     trap_signals => {
@@ -256,14 +258,14 @@ Parallel::Prefork - A simple prefork server framework
       USR1 => undef,
     }
   });
-  
+
   while ($pm->signal_received ne 'TERM') {
     load_config();
     $pm->start(sub {
         ... do some work within the child process ...
     });
   }
-  
+
   $pm->wait_all_children();
 
 =head1 DESCRIPTION

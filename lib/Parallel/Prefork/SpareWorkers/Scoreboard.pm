@@ -19,7 +19,7 @@ sub _format_slot {
 }
 
 sub new {
-    my ($klass, $filename, $max_workers) = @_;
+    my ($class, $filename, $max_workers) = @_;
     # create scoreboard file
     $filename ||= File::Temp::tempdir(CLEANUP => 1) . '/scoreboard';
     sysopen my $fh, $filename, O_RDWR | O_CREAT | O_EXCL
@@ -32,7 +32,7 @@ sub new {
         fh          => $fh,
         max_workers => $max_workers,
         slot        => undef,
-    }, $klass;
+    }, $class;
     $self;
 }
 

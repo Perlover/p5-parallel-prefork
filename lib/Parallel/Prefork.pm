@@ -42,14 +42,14 @@ sub new {
 
 sub start {
     my ($self, $cb) = @_;
-    
+
     $self->manager_pid($$);
     $self->signal_received('');
     $self->{generation}++;
-    
+
     die 'cannot start another process while you are in child process'
         if $self->{in_child};
-    
+
     # main loop
     while (! $self->signal_received) {
         my $action = $self->{_no_adjust_until} <= Time::HiRes::time()
@@ -126,7 +126,7 @@ sub start {
             $self->signal_all_children($sig);
         }
     }
-    
+
     1; # return from parent process
 }
 
@@ -191,7 +191,8 @@ sub _action_for {
 sub wait_all_children {
     my $self = shift;
     $self->{_no_adjust_until} = undef;
-    while (%{$self->{worker_pids}}) {
+    # Check an amount _only_ processes which lives! Otherwise we will get infinite loop!
+    while ( kill 0, keys %{ $self->{worker_pids} } ) {
         if (my ($pid) = $self->_wait(1)) {
             if (delete $self->{worker_pids}{$pid}) {
                 $self->_on_child_reap($pid, $?);
@@ -247,7 +248,7 @@ Parallel::Prefork - A simple prefork server framework
 =head1 SYNOPSIS
 
   use Parallel::Prefork;
-  
+
   my $pm = Parallel::Prefork->new({
     max_workers  => 10,
     trap_signals => {
@@ -256,14 +257,14 @@ Parallel::Prefork - A simple prefork server framework
       USR1 => undef,
     }
   });
-  
+
   while ($pm->signal_received ne 'TERM') {
     load_config();
     $pm->start(sub {
         ... do some work within the child process ...
     });
   }
-  
+
   $pm->wait_all_children();
 
 =head1 DESCRIPTION

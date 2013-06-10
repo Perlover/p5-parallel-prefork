@@ -18,14 +18,15 @@ our %EXPORT_TAGS = (
 our @EXPORT_OK = uniq sort map { @$_ } values %EXPORT_TAGS;
 $EXPORT_TAGS{all} = \@EXPORT_OK;
 
-__PACKAGE__->mk_accessors(qw/min_spare_workers max_spare_workers scoreboard/);
+__PACKAGE__->mk_accessors(qw/min_spare_workers max_spare_workers scoreboard heartbeat/);
 
 sub new {
-    my $klass = shift;
-    my $self = $klass->SUPER::new(@_);
+    my $class = shift;
+    my $self = $class->SUPER::new(@_);
     die "mandatory option min_spare_workers not set"
         unless $self->{min_spare_workers};
     $self->{max_spare_workers} ||= $self->max_workers;
+    $self->{heartbeat} ||= 0.25;
     $self->{scoreboard} ||= do {
         require 'Parallel/Prefork/SpareWorkers/Scoreboard.pm';
         Parallel::Prefork::SpareWorkers::Scoreboard->new(
@@ -86,22 +87,23 @@ Parallel::Prefork::SpareWorkers - A prefork server framework with support for (m
 =head1 SYNOPSIS
 
   use Parallel::Prefork::SpareWorkers qw(:status);
-  
+
   my $pm = Parallel::Prefork::SpareWorkers->new({
     max_workers       => 40,
     min_spare_workers => 5,
     max_spare_workers => 10,
+    heartbeat         => 0.1,
     trap_signals      => {
       TERM => 'TERM',
       HUP  => 'TERM',
       USR1 => undef,
     },
   });
-  
+
   while ($pm->signal_recieived ne 'TERM') {
     load_config();
     $pm->start and next;
-    
+
     # do what ever you like, as follows
     while (my $sock = $listener->accept()) {
       $pm->set_status('A');
@@ -109,10 +111,10 @@ Parallel::Prefork::SpareWorkers - A prefork server framework with support for (m
       $sock->close();
       $pm->set_status(STATUS_IDLE);
     }
-    
+
     $pm->finish;
   }
-  
+
   $pm->wait_all_children;
 
 =head1 DESCRIPTION
@@ -132,6 +134,10 @@ minimum number of spare workers (mandatory)
 =head3 max_spare_workers
 
 maxmum number of spare workers (default: max_workers)
+
+=head3 heartbeat
+
+A fractional period of child amount checking. Do not use very small numbers to avoid frequent use of CPU. Default is 0.25
 
 =head3 scoreboard_file
 

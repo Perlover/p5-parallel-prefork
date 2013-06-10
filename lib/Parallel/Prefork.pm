@@ -17,7 +17,7 @@ use Class::Accessor::Lite (
 our $VERSION = '0.13';
 
 sub new {
-    my $klass = shift;
+    my $class = shift;
     my $opts = @_ == 1 ? $_[0] : +{ @_ };
     my $self = bless {
         worker_pids          => {},
@@ -32,7 +32,7 @@ sub new {
         generation           => 0,
         %$opts,
         _no_adjust_until     => 0, # becomes undef in wait_all_children
-    }, $klass;
+    }, $class;
     $SIG{$_} = sub {
         $self->signal_received($_[0]);
     } for keys %{$self->trap_signals};
@@ -92,8 +92,10 @@ sub start {
         }
         $self->{__dbg_callback}->()
             if $self->{__dbg_callback};
+        $self->select ( undef, undef, undef, $self->{heartbeat} )
+            if $self->{heartbeat};
         if (my ($exit_pid, $status)
-                = $self->_wait(! $self->{__dbg_callback} && $action <= 0)) {
+                = $self->_wait(! $self->{__dbg_callback} && ! $self->{heartbeat} && $action <= 0)) {
             $self->_on_child_reap($exit_pid, $status);
             if (delete($self->{worker_pids}{$exit_pid}) == $self->{generation}
                 && $status != 0) {
